@@ -1,0 +1,12 @@
+streamlit
+gradio
+transformers
+accelerate
+torch
+diffusers
+Pillow
+openai
+scikit-learn
+matplotlib
+plotly
+python-dotenv
