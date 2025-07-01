@@ -4,7 +4,7 @@ import gradio as gr
 from PIL import Image
 from dotenv import load_dotenv
 from ocr.batch_ocr import process_image, ocr_and_openai, process_all_images
-from db.chroma_utils import create_db
+from db.chroma_utils import create_db, search_hybrid
 
 load_dotenv()
 
@@ -43,6 +43,12 @@ with gr.Blocks(title="Image-to-Text or OCR Demo") as scout_app:
 
         with gr.Column():
             description_output = gr.Textbox(label="Result")
+        
+        # New search column
+        with gr.Column():
+            search_query = gr.Textbox(label="Search Query")
+            search_btn = gr.Button("Search Chroma DB")
+            search_output = gr.Textbox(label="Search Results")
 
     submit_btn.click(
         fn=process_image,
@@ -64,6 +70,12 @@ with gr.Blocks(title="Image-to-Text or OCR Demo") as scout_app:
         fn=create_db,
         inputs=[transcripts_state, base_dir_state],
         outputs=[description_output]
+    )
+    
+    search_btn.click(
+        fn=search_hybrid,
+        inputs=[search_query, base_dir_state],
+        outputs=[search_output]
     )
 
 if __name__ == "__main__":
