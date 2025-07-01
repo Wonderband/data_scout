@@ -1,4 +1,4 @@
-import os, json, logging, pickle, re
+import os, json, logging, pickle, re, pathlib
 from typing import List
 from langchain.schema import Document
 from langchain_community.vectorstores import Chroma
@@ -6,28 +6,23 @@ from langchain_community.embeddings import BedrockEmbeddings
 from langchain.retrievers import BM25Retriever, EnsembleRetriever
 import boto3
 
-from utils.text_utils import normalise, extract_facets
+from utils.text_utils import normalise
+from utils.json_chunker import iter_chunks
 
 
 # ---------- build phase ---------- #
 def create_db(json_paths: List[str], base_dir: str, persist_name="chroma_db"):
     docs: List[Document] = []
     for path in json_paths:
-        raw = open(path, encoding="utf-8").read().strip()
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError as e:
-            logging.warning(f"Skip {path}: {e}")
-            continue
-
-        if not isinstance(data, dict):
-            continue
-
-        for k, v in data.items():
-            text = normalise(f"{k}: {v}")
-            meta = {"source_file": os.path.basename(path), "field": k}
-            meta.update(extract_facets(str(v)))
-            docs.append(Document(page_content=text, metadata=meta))
+        with open(path, encoding="utf-8") as fh:
+            try:
+                data = json.load(fh)
+            except json.JSONDecodeError as e:
+                logging.warning(f"Skip {path}: {e}")
+                continue
+        for doc in iter_chunks(data, []):
+            doc.metadata["source_file"] = os.path.basename(path)
+            docs.append(doc)
 
     if not docs:
         return "No valid JSON found."
@@ -78,10 +73,10 @@ def search_hybrid(query: str, base_dir: str, top_k: int = 5, persist_name="chrom
     # de‑duplicate by source file + field
     seen, out_lines = set(), []
     for d in hits:
-        key = (d.metadata["source_file"], d.metadata["field"])
+        key = (d.metadata["source_file"], d.metadata['json_path'])
         if key in seen:
             continue
         seen.add(key)
-        out_lines.append(f"📄 {d.metadata['source_file']} → {d.metadata['field']}\n{d.page_content}")
+        out_lines.append(f"📄 {d.metadata['source_file']} → {d.metadata['json_path']}\n{d.page_content}")
 
     return "\n\n---\n\n".join(out_lines[:top_k])

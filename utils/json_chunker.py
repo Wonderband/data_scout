@@ -23,25 +23,29 @@ def iter_chunks(node: Any, path: List[str]) -> Generator[Document, None, None]:
         kids = {k: v for k, v in node.items() if isinstance(v, (dict, list))}
 
         if prim:
-            text = "\n".join(f"{k}: {v}" for k, v in prim.items())
-            words = text.split()
-
-            if len(words) > MAX_TOKENS:
-                lines = text.split("\n")
-                chunk_lines, chunk_words = [], 0
-
-                for line in lines:
-                    lw = len(line.split())
-                    if chunk_lines and chunk_words + lw > MAX_TOKENS:
-                        yield make_doc("\n".join(chunk_lines))
-                        chunk_lines, chunk_words = [], 0
-                    chunk_lines.append(line)
-                    chunk_words += lw
-
-                if chunk_lines:
-                    yield make_doc("\n".join(chunk_lines))
-            else:
+            for k, v in prim.items():
+                text = f"{k}: {v}"
                 yield make_doc(text)
+            # text = "\n".join(f"{k}: {v}" for k, v in prim.items())
+            # words = text.split()
+            #
+            # if len(words) > MAX_TOKENS:
+            #     lines = text.split("\n")
+            #     chunk_lines, chunk_words = [], 0
+            #
+            #     for line in lines:
+            #         lw = len(line.split())
+            #         if chunk_lines and chunk_words + lw > MAX_TOKENS:
+            #             yield make_doc("\n".join(chunk_lines))
+            #             chunk_lines, chunk_words = [], 0
+            #         chunk_lines.append(line)
+            #         chunk_words += lw
+            #
+            #     if chunk_lines:
+            #         yield make_doc("\n".join(chunk_lines))
+            #
+            # else:
+            #     yield make_doc(text)
 
         for k, v in kids.items():
             yield from iter_chunks(v, path + [k])
