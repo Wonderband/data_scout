@@ -1,16 +1,32 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+# inspect_chunks.py  ────────────────────────────────────────────────
+import os, pickle, pandas as pd
+from textwrap import shorten
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+def preview_chunks(base_dir: str, persist_name: str = "chroma_db", n: int = 25):
+    vect_dir = os.path.join(base_dir, "data", persist_name)
+    path = os.path.join(vect_dir, "docs.pkl")
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    with open(path, "rb") as f:
+        docs = pickle.load(f)
+
+    rows = []
+    for d in docs[:n]:
+        rows.append({
+            "file": d.metadata.get("source_file"),
+            "type": d.metadata.get("chunk_type"),
+            "json_path": d.metadata.get("json_path"),
+            "kv_key": d.metadata.get("kv_key"),
+            "kv_value": d.metadata.get("kv_value"),
+            "doc_no": d.metadata.get("doc_no"),
+            "doc_date": d.metadata.get("doc_date"),
+            "content": shorten(d.page_content, width=80, placeholder="…"),
+        })
+
+    df = pd.DataFrame(rows)
+    print(df.to_markdown(index=False))
+
+
+if __name__ == "__main__":
+    BASE_DIR = r"D:\python_projects\data_scout"  # ← adjust if needed
+    preview_chunks(BASE_DIR, n=30)

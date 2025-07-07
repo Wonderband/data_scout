@@ -3,8 +3,10 @@ import glob
 import gradio as gr
 from PIL import Image
 from dotenv import load_dotenv
+
+from db.retriever import search_hybrid
 from ocr.batch_ocr import process_image, ocr_and_openai, process_all_images
-from db.chroma_utils import create_db, search_hybrid
+from db.chroma_utils import create_db
 
 load_dotenv()
 
@@ -80,4 +82,4 @@ with gr.Blocks(title="Image-to-Text or OCR Demo") as scout_app:
 
 if __name__ == "__main__":
     print("Starting Gradio Blocks interface…")
-    scout_app.launch(share=True)
+    scout_app.launch(share=True, debug=True)
