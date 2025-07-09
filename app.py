@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from db.retriever import search_hybrid
 from ocr.batch_ocr import process_image, ocr_and_openai, process_all_images
 from db.chroma_utils import create_db
+from rag.ai_processor import clean_prompt, perform_rag
 
 load_dotenv()
 
@@ -75,7 +76,7 @@ with gr.Blocks(title="Image-to-Text or OCR Demo") as scout_app:
     )
     
     search_btn.click(
-        fn=search_hybrid,
+        fn=perform_rag,
         inputs=[search_query, base_dir_state],
         outputs=[search_output]
     )
