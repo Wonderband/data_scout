@@ -1,10 +1,8 @@
 import os
+import pandas as pd
 from openai import OpenAI
-from db.retriever import search_hybrid, search_hybrid_multi
+from db.retriever import search_hybrid_multi
 
-from openai import OpenAI
-
-  # make sure OPENAI_API_KEY is in your env
 
 
 def clean_prompt(query: str) -> str:
@@ -114,6 +112,84 @@ def perform_rag(user_prompt: str, base_dir: str):
     # Step 3: Generate the final answer using the original prompt + retrieved context.
     final_response = generate_final_response(user_prompt, context_str)
     return final_response
+
+
+
+
+def process_table(
+        df: pd.DataFrame,
+        base_dir: str,
+        top_k: int = 10,
+        model: str = "gpt-4o"
+) -> pd.DataFrame:
+    """
+    For each row in df:
+      1) build a prompt like:
+         "Search for a document containing these values: {concatenated row values}"
+      2) search Chroma (search_hybrid_multi)
+      3) call OpenAI to extract “amount” and “notes”
+      4) write back into `Actual Amount` and `Notes` columns.
+    """
+    client = OpenAI()
+    # Ensure the output columns exist
+    df = df.copy()
+    if "Actual Amount" not in df.columns:
+        df["Actual Amount"] = ""
+    if "Notes" not in df.columns:
+        df["Notes"] = ""
+
+    for idx, row in df.iterrows():
+        # 1) build the simple concatenated filter string
+        wanted = ["Company", "Date", "Contragent", "Amount"]
+        row_values = (
+            row
+            .loc[wanted]  # pick only those columns
+            .dropna()  # drop any missing values
+            .astype(str)  # ensure strings
+            .tolist()  # list of strings
+        )
+        filter_str = ", ".join(row_values).strip()
+        prompt = (
+            f"Search and find the document that contains the following data: {filter_str}\n\n"
+            "From that document, return TWO things in the exact format:\n"
+            "1) Total sum or amount found (just the number, no currency symbol)\n"
+            "2) If any piece of data from the filter is missing or mismatches, "
+            f"return a brief note describing what’s missing or different. "
+            f"Last number in {filter_str} is amount, so if actual amount found is different - state it in the note"
+            "If everything matches, return “OK”.\n\n"
+            "Format your answer as:\n"
+            "Amount: <number>\n"
+            "Notes: <your comment>"
+        )
+        # 2) retrieve context
+        results = search_hybrid_multi(filter_str, base_dir, top_k=top_k)
+        context = "\n".join(str(r) for r in results)
+
+        # 3) call the model
+        full_messages = [
+            {"role": "system", "content": "You are a finance document analyzer."},
+            {"role": "user", "content": prompt + "\n\nContext:\n" + context}
+        ]
+        resp = client.chat.completions.create(
+            model=model,
+            messages=full_messages,
+            temperature=0.0,
+            max_tokens=500
+        )
+        answer = resp.choices[0].message.content.strip()
+
+        # 4) parse the two lines
+        amt, notes = "", ""
+        for line in answer.splitlines():
+            if line.lower().startswith("amount:"):
+                amt = line.split(":", 1)[1].strip()
+            if line.lower().startswith("notes:"):
+                notes = line.split(":", 1)[1].strip()
+
+        df.at[idx, "Actual Amount"] = amt
+        df.at[idx, "Notes"] = notes
+
+    return df
 
 
 if __name__ == "__main__":

@@ -8,9 +8,9 @@ from utils.text_utils import normalise, DATE_ISO, DOC_NO
 
 
 # ---------- helpers -------------------------------------------------
-def _load_stores(base_dir: str, persist_name: str = "chroma_db"):
+def _load_stores(base_dir: str, persist_name: str = "chroma_acts_db"):
     """Return (Chroma, docs list, BM25Okapi)."""
-    vect_dir = os.path.join(base_dir, "data", persist_name)
+    vect_dir = os.path.join(base_dir, "data", "acts", persist_name)
     docs = pickle.load(open(os.path.join(vect_dir, "docs.pkl"), "rb"))
     bm25 = pickle.load(open(os.path.join(vect_dir, "bm25.pkl"), "rb"))
 
@@ -148,7 +148,7 @@ def search_hybrid_multi(
         query: str,
         base_dir: str,
         top_k: int = 10,
-        persist_name: str = "chroma_db",
+        persist_name: str = "chroma_acts_db",
 ) -> List[Tuple[str, float, str, str]]:
     """
     Support multi-item queries separated by commas:
